@@ -1,0 +1,7 @@
+{{define "content"}}<h1>Import / export</h1>
+<div class="card"><h2>Import CSV</h2>
+<p>Columns: <code>{{.Header}}</code><br><span class="mut">type is <code>mailbox</code> or <code>alias</code>; members are separated by <code>;</code>, suffix <code>:send</code> grants send-as. Existing rows are updated, missing departments are created. The whole file is validated first: if any line is invalid, nothing is written. New mailboxes get random passwords, returned once as credentials.csv.</span></p>
+{{if .Errors}}<ul class="mono">{{range .Errors}}<li>{{.}}</li>{{end}}</ul>{{end}}
+<form method="post" action="/import" enctype="multipart/form-data">{{template "csrf" .CSRF}}
+<input type="file" name="file" accept=".csv,text/csv" required><p><button type="submit">Import</button></p></form></div>
+<div class="card"><h2>Export</h2><p><a class="btn sec" href="/export.csv">Download CSV</a></p></div>{{end}}

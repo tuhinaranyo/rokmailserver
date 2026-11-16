@@ -1,0 +1,38 @@
+{{define "content"}}
+{{if .Acc}}<h1>{{.Acc.Email}}</h1>
+<p class="mut">{{.Acc.Role}}{{if .Acc.DeptName}} &middot; {{.Acc.DeptName}}{{end}} &middot; {{if .Acc.Active}}active{{else}}disabled{{end}} &middot; created {{.Acc.Created}}</p>
+{{else}}<h1>New account</h1>{{end}}
+
+{{if or (not .Acc) .CanEdit}}
+<div class="card"><form method="post" action="{{if .Acc}}/accounts/{{.Acc.ID}}{{else}}/accounts/new{{end}}">
+{{template "csrf" .CSRF}}
+{{if not .Acc}}<label for="email">Email</label><input id="email" type="text" name="email" value="{{.Form.Get "email"}}" required autocapitalize="off">{{end}}
+<label for="name">Name</label><input id="name" type="text" name="name" value="{{.Form.Get "name"}}">
+{{if not .Acc}}<label for="password">Password (min 10 characters)</label><input id="password" type="password" name="password" autocomplete="new-password">
+<p><input id="generate" type="checkbox" name="generate" value="1"> <label class="inline" for="generate">Generate a random password and show it once</label></p>{{end}}
+{{if .CanRole}}<label for="role">Role</label><select id="role" name="role">{{range .Roles}}<option{{if eq . ($.Form.Get "role")}} selected{{end}}>{{.}}</option>{{end}}</select>
+<label for="dept">Department</label><select id="dept" name="dept"><option value="0">(none)</option>{{range .Depts}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) ($.Form.Get "dept")}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+{{else if not .Acc}}<p class="mut">Role: user &middot; Department: {{.OwnDeptName}}</p>{{end}}
+<label for="quota_mb">Quota (MB)</label><input id="quota_mb" type="number" name="quota_mb" min="1" value="{{.Form.Get "quota_mb"}}">
+<label for="forward_to">Forward to (comma-separated)</label><input id="forward_to" type="text" name="forward_to" value="{{.Form.Get "forward_to"}}">
+<p><input id="keep_copy" type="checkbox" name="keep_copy" value="1"{{if .Form.Get "keep_copy"}} checked{{end}}> <label class="inline" for="keep_copy">Keep a copy in the mailbox when forwarding</label></p>
+<p><input id="can_send" type="checkbox" name="can_send" value="1"{{if .Form.Get "can_send"}} checked{{end}}> <label class="inline" for="can_send">May send mail (uncheck for receive-only)</label></p>
+<button type="submit">{{if .Acc}}Save{{else}}Create account{{end}}</button></form></div>
+{{else if .Acc}}<div class="card"><p>Name: {{.Acc.Name}}<br>Quota: {{.Acc.Quota}} MB<br>Forward to: {{.Acc.Forward}}</p></div>{{end}}
+
+{{if and .Acc .CanReset}}<div class="card"><h2>Reset password</h2>
+<form method="post" action="/accounts/{{.Acc.ID}}/password">{{template "csrf" .CSRF}}
+<label for="npw">New password (min 10 characters)</label><input id="npw" type="password" name="password" autocomplete="new-password">
+<p><input id="gen2" type="checkbox" name="generate" value="1"> <label class="inline" for="gen2">Generate a random password and show it once</label></p>
+<button type="submit">Set password</button></form>
+<p>This signs the user out everywhere.</p></div>{{end}}
+
+{{if and .Acc .CanActive}}<div class="card"><form method="post" action="/accounts/{{.Acc.ID}}/active">{{template "csrf" .CSRF}}
+<input type="hidden" name="active" value="{{if .Acc.Active}}0{{else}}1{{end}}">
+<button class="sec" type="submit">{{if .Acc.Active}}Disable account{{else}}Enable account{{end}}</button></form></div>{{end}}
+
+{{if and .Acc .CanDelete}}<div class="card"><details><summary>Delete account</summary>
+<form method="post" action="/accounts/{{.Acc.ID}}/delete">{{template "csrf" .CSRF}}
+<p>Removes the account from the mail system. Stored mail on disk is not deleted.</p>
+<button class="danger" type="submit">Delete {{.Acc.Email}}</button></form></details></div>{{end}}
+{{end}}

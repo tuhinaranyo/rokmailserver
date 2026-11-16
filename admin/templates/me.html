@@ -1,0 +1,13 @@
+{{define "content"}}<h1>My account</h1>
+<p class="mut">{{.Acc.Email}} &middot; {{.Acc.Role}}{{if .Acc.DeptName}} &middot; {{.Acc.DeptName}}{{end}}</p>
+<div class="card"><h2>Change password</h2>
+<form method="post" action="/me/password">{{template "csrf" .CSRF}}
+<label for="cur">Current password</label><input id="cur" type="password" name="current" required autocomplete="current-password">
+<label for="new">New password (min 10 characters)</label><input id="new" type="password" name="new" required autocomplete="new-password">
+<label for="conf">Repeat new password</label><input id="conf" type="password" name="confirm" required autocomplete="new-password">
+<p><button type="submit">Change password</button></p></form></div>
+{{if .CanForward}}<div class="card"><h2>Forwarding</h2>
+<form method="post" action="/me/forward">{{template "csrf" .CSRF}}
+<label for="fw">Forward to (comma-separated, empty = none)</label><input id="fw" type="text" name="forward_to" value="{{.Form.Get "forward_to"}}">
+<p><input id="kc" type="checkbox" name="keep_copy" value="1"{{if .Form.Get "keep_copy"}} checked{{end}}> <label class="inline" for="kc">Keep a copy in my mailbox</label></p>
+<button type="submit">Save</button></form></div>{{end}}{{end}}

@@ -1,0 +1,9 @@
+{{define "content"}}<h1>Aliases <span class="mut">({{.Total}})</span></h1>
+<form class="row" method="get" action="/aliases">
+<div><label for="q">Search</label><input id="q" type="search" name="q" value="{{.Q}}"></div>
+<button type="submit">Search</button>
+{{if .CanCreate}}<a class="btn sec" href="/aliases/new">New alias</a>{{end}}</form>
+<div class="tablewrap"><table><tr><th>Address</th><th>Description</th><th>Department</th><th>Members</th><th>Status</th></tr>
+{{range .List}}<tr{{if not .Active}} class="off"{{end}}><td><a href="/aliases/{{.ID}}">{{.Address}}</a></td><td>{{.Desc}}</td><td>{{.DeptName}}</td><td class="mono">{{.Members}}</td><td>{{if .Active}}active{{else}}disabled{{end}}</td></tr>
+{{else}}<tr><td colspan="5" class="mut">No aliases.</td></tr>{{end}}</table></div>
+{{template "pager" .}}{{end}}

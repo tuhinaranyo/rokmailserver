@@ -1,0 +1,13 @@
+{{define "content"}}<h1>{{if .Alias}}{{.Alias.Address}}{{else}}New alias{{end}}</h1>
+{{if .CanManage}}<div class="card"><form method="post" action="{{if .Alias}}/aliases/{{.Alias.ID}}{{else}}/aliases/new{{end}}">{{template "csrf" .CSRF}}
+{{if not .Alias}}<label for="address">Address</label><input id="address" type="text" name="address" value="{{.Form.Get "address"}}" required autocapitalize="off">{{end}}
+<label for="description">Description</label><input id="description" type="text" name="description" value="{{.Form.Get "description"}}">
+{{if .CanDept}}<label for="dept">Department</label><select id="dept" name="dept"><option value="0">(none)</option>{{range .Depts}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) ($.Form.Get "dept")}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+{{else if not .Alias}}<p class="mut">Department: {{.OwnDeptName}}</p>{{end}}
+<label for="members">Members (one per line; add <code>:send</code> to let a local member send as this alias)</label>
+<textarea id="members" name="members" required>{{.Form.Get "members"}}</textarea>
+<p><input id="active" type="checkbox" name="active" value="1"{{if .Form.Get "active"}} checked{{end}}> <label class="inline" for="active">Active</label></p>
+<button type="submit">{{if .Alias}}Save{{else}}Create alias{{end}}</button></form></div>
+{{if .Alias}}<div class="card"><details><summary>Delete alias</summary>
+<form method="post" action="/aliases/{{.Alias.ID}}/delete">{{template "csrf" .CSRF}}<button class="danger" type="submit">Delete {{.Alias.Address}}</button></form></details></div>{{end}}
+{{else}}<div class="card"><p>{{.Alias.Desc}}</p><p class="mono">{{range .Alias.Members}}{{.Dest}}{{if .Send}} (may send){{end}}<br>{{end}}</p></div>{{end}}{{end}}

@@ -1,0 +1,7 @@
+{{define "content"}}<h1>Dashboard</h1>
+<div class="stats">
+<div><b>{{.Accounts}}</b>accounts</div>
+<div><b>{{.Aliases}}</b>aliases</div>
+{{if .Super}}<div><b>{{.Active}}</b>active accounts</div><div><b>{{.Domains}}</b>domains</div><div><b>{{.Depts}}</b>departments</div>{{end}}
+</div>
+{{if not .CanList}}<p class="mut">Use <a href="/me">My account</a> to change your password.</p>{{end}}{{end}}

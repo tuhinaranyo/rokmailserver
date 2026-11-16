@@ -1,0 +1,5 @@
+{{define "content"}}<div class="login card"><h1>rokmail</h1>
+<form method="post" action="/login">{{template "csrf" .LoginCSRF}}
+<label for="email">Email</label><input id="email" type="email" name="email" value="{{.Email}}" required autofocus autocomplete="username">
+<label for="password">Password</label><input id="password" type="password" name="password" required autocomplete="current-password">
+<p><button type="submit">Log in</button></p></form></div>{{end}}

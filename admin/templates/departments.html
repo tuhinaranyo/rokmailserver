@@ -1,0 +1,9 @@
+{{define "content"}}<h1>Departments</h1>
+<form class="row" method="post" action="/departments">{{template "csrf" .CSRF}}
+<div><label for="name">New department</label><input id="name" type="text" name="name" required maxlength="60"></div><button type="submit">Add</button></form>
+<div class="tablewrap"><table><tr><th>Name</th><th>Accounts</th><th>Aliases</th><th></th></tr>
+{{range .List}}<tr><td><form class="row" method="post" action="/departments/{{.ID}}" style="margin:0">{{template "csrf" $.CSRF}}<input type="text" name="name" value="{{.Name}}" maxlength="60" aria-label="Name"><button class="sec" type="submit">Rename</button></form></td>
+<td>{{.Accounts}}</td><td>{{.Aliases}}</td>
+<td><form method="post" action="/departments/{{.ID}}/delete">{{template "csrf" $.CSRF}}<button class="sec" type="submit">Delete</button></form></td></tr>
+{{else}}<tr><td colspan="4" class="mut">No departments.</td></tr>{{end}}</table></div>
+<p class="mut">Deleting a department leaves its accounts and aliases without a department.</p>{{end}}

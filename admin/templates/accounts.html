@@ -1,0 +1,15 @@
+{{define "content"}}<h1>Accounts <span class="mut">({{.Total}})</span></h1>
+<form class="row" method="get" action="/accounts">
+<div><label for="q">Search</label><input id="q" type="search" name="q" value="{{.Q}}"></div>
+{{if .Super}}<div><label for="dept">Department</label><select id="dept" name="dept"><option value="">All</option>
+{{range .Depts}}<option value="{{.ID}}"{{if eq .ID $.FilterDept}} selected{{end}}>{{.Name}}</option>{{end}}</select></div>{{end}}
+<div><label for="status">Status</label><select id="status" name="status"><option value="">All</option>
+<option value="active"{{if eq .Status "active"}} selected{{end}}>Active</option>
+<option value="disabled"{{if eq .Status "disabled"}} selected{{end}}>Disabled</option></select></div>
+<button type="submit">Filter</button>
+{{if .CanCreate}}<a class="btn sec" href="/accounts/new">New account</a>{{end}}
+</form>
+<div class="tablewrap"><table><tr><th>Email</th><th>Name</th><th>Role</th><th>Department</th><th>Quota</th><th>Status</th></tr>
+{{range .List}}<tr{{if not .Active}} class="off"{{end}}><td><a href="/accounts/{{.ID}}">{{.Email}}</a></td><td>{{.Name}}</td><td>{{.Role}}</td><td>{{.DeptName}}</td><td>{{.Quota}} MB</td><td>{{if .Active}}active{{else}}disabled{{end}}</td></tr>
+{{else}}<tr><td colspan="6" class="mut">No accounts.</td></tr>{{end}}</table></div>
+{{template "pager" .}}{{end}}

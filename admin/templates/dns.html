@@ -1,0 +1,6 @@
+{{define "content"}}<h1>DNS records</h1>
+<div class="card"><p><b>Reverse DNS (PTR)</b>: the public IP of this server must resolve back to <code>{{if .MailHost}}{{.MailHost}}{{else}}your mail host{{end}}</code>, and <code>{{.MailHost}}</code> needs an A (and AAAA) record pointing at that IP. Set the PTR at your VPS provider.</p></div>
+{{range .Domains}}<h2>{{.Name}}</h2>{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
+<div class="tablewrap"><table><tr><th>Name</th><th>Type</th><th>Value</th></tr>
+{{range .Records}}<tr><td class="mono">{{.Name}}</td><td>{{.Type}}</td><td class="mono">{{.Value}}</td></tr>{{end}}</table></div>{{end}}
+<p class="mut">DMARC starts in monitoring mode (<code>p=none</code>); tighten to <code>quarantine</code> once mail flows correctly. If your DNS host rejects long TXT values, split the DKIM value into 255-character quoted strings.</p>{{end}}

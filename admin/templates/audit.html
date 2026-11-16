@@ -1,0 +1,5 @@
+{{define "content"}}<h1>Audit log</h1>
+<div class="tablewrap"><table><tr><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th><th>IP</th></tr>
+{{range .List}}<tr><td>{{.At}}</td><td>{{.Actor}}</td><td>{{.Action}}</td><td>{{.Target}}</td><td class="mono">{{.Detail}}</td><td>{{.IP}}</td></tr>
+{{else}}<tr><td colspan="6" class="mut">Empty.</td></tr>{{end}}</table></div>
+{{template "pager" .}}{{end}}

@@ -1,0 +1,23 @@
+{{define "csrf"}}<input type="hidden" name="csrf" value="{{.}}">{{end}}
+{{define "pager"}}{{if or (gt .Page 1) .HasNext}}<div class="pager">
+{{if gt .Page 1}}<a href="?{{.Base}}&amp;page={{.Prev}}">&larr; Previous</a>{{end}}
+<span class="mut">Page {{.Page}}</span>
+{{if .HasNext}}<a href="?{{.Base}}&amp;page={{.Next}}">Next &rarr;</a>{{end}}</div>{{end}}{{end}}
+{{define "layout"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{.Title}} - rokmail</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+{{if .U}}<header><nav>
+<a href="/"><b>rokmail</b></a>
+{{if .CanList}}<a href="/accounts">Accounts</a><a href="/aliases">Aliases</a>{{end}}
+{{if .Super}}<a href="/departments">Departments</a><a href="/domains">Domains</a><a href="/dns">DNS</a><a href="/import">Import/Export</a><a href="/audit">Audit</a>{{end}}
+<a href="/me">{{.U.Email}}</a>
+<form method="post" action="/logout">{{template "csrf" .CSRF}}<button class="sec" type="submit">Log out</button></form>
+</nav></header>{{end}}
+<main>
+{{if .Msg}}<p class="msg">{{.Msg}}</p>{{end}}
+{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
+{{template "content" .}}
+</main></body></html>{{end}}

@@ -1,0 +1,7 @@
+{{define "content"}}<h1>Domains</h1>
+<form class="row" method="post" action="/domains">{{template "csrf" .CSRF}}
+<div><label for="name">Add domain</label><input id="name" type="text" name="name" placeholder="example.com" required></div><button type="submit">Add</button></form>
+<div class="tablewrap"><table><tr><th>Domain</th><th>Accounts</th><th>Aliases</th><th>Added</th><th></th></tr>
+{{range .List}}<tr><td>{{.Name}}</td><td>{{.Accounts}}</td><td>{{.Aliases}}</td><td>{{.Created}}</td>
+<td>{{if ne .Name $.Primary}}<form method="post" action="/domains/{{.Name}}/delete">{{template "csrf" $.CSRF}}<button class="sec" type="submit">Remove</button></form>{{end}}</td></tr>{{end}}</table></div>
+<p class="mut">After adding a domain, publish its records from the <a href="/dns">DNS page</a>. A DKIM key is created automatically.</p>{{end}}
