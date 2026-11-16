@@ -45,7 +45,7 @@ services:
   rspamd:
     <<: *common
     image: rspamd/rspamd:3.12.1
-    mem_limit: 256m
+    mem_limit: 512m
     depends_on:
       redis: { condition: service_healthy }
     volumes:

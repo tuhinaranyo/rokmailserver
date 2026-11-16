@@ -233,16 +233,20 @@ check("587: authenticated alice -> bob delivered", inbox_has(B, t))
 t = tag(); submit(p465, B, B, A, t, ssl_wrap=True)
 check("465: implicit TLS, authenticated bob -> alice delivered", inbox_has(A, t))
 
-for port, label in ((p587, "587"), (p465, "465")):
+def refused_code(*a, **kw):
+    """Submit and return the 5xx code of a sender/recipient refusal, or None if it was accepted."""
     try:
-        submit(port, A, B, A, tag(), ssl_wrap=(port == p465)); check(f"{label}: alice sending as bob rejected", False)
+        submit(*a, **kw); return None
     except smtplib.SMTPSenderRefused as e:
-        check(f"{label}: alice sending as bob rejected", e.smtp_code == 553, e)
+        return e.smtp_code
+    except smtplib.SMTPRecipientsRefused as e:       # reject_authenticated_sender_login_mismatch fires at RCPT (smtpd_delay_reject)
+        return next(iter(e.recipients.values()))[0]
 
-try:
-    submit(p587, A, SUP, B, tag()); check("587: alice (no send-as) sending as support@ rejected", False)
-except smtplib.SMTPSenderRefused as e:
-    check("587: alice (no send-as) sending as support@ rejected", e.smtp_code == 553, e)
+for port, label in ((p587, "587"), (p465, "465")):
+    code = refused_code(port, A, B, A, tag(), ssl_wrap=(port == p465))
+    check(f"{label}: alice sending as bob rejected (553)", code == 553, code)
+code = refused_code(p587, A, SUP, B, tag())
+check("587: alice (no send-as) sending as support@ rejected (553)", code == 553, code)
 
 t = tag(); submit(p587, B, SUP, A, t)
 check("587: bob (send-as member) sending as support@ accepted and delivered", inbox_has(A, t))
@@ -281,7 +285,7 @@ python3 -I "$WORK/smoke_client.py" 127.0.0.1 "$P_SMTP" "$P_SUB" "$P_SMTPS" "$P_I
 say "Junk filing (sieve) and over-quota rejection via LMTP"
 lmtp() { # $1 recipient, stdin = message
   dc exec -T mail perl -MIO::Socket::UNIX -e '
-    my ($rcpt)=@ARGV; local $/; my $body=<STDIN>; $body =~ s/\r?\n/\r\n/g;
+    my ($rcpt)=@ARGV; my $body=do { local $/; <STDIN> }; $body =~ s/\r?\n/\r\n/g;
     my $s=IO::Socket::UNIX->new("/var/spool/postfix/private/dovecot-lmtp") or die "connect: $!";
     my $rd=sub{ my $l; my $o=""; while(defined($l=<$s>)){ $o.=$l; last if $l=~/^\d{3} /; } print $o; };
     $rd->(); print $s "LHLO t\r\n"; $rd->(); print $s "MAIL FROM:<ext\@external.example>\r\n"; $rd->();
