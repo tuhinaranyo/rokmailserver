@@ -113,6 +113,7 @@ SQL
 dc exec -T mail sh -c 'chmod 0666 /db/mail.db*'
 
 wait_healthy mail 120
+wait_healthy rspamd 240   # until it is up, mail is accepted unscanned (milter_default_action = accept)
 if [ $WITH_ADMIN = 1 ]; then
   say "stopping the admin container: mail must keep working without it"
   dc stop admin
@@ -132,7 +133,8 @@ cat > "$WORK/smoke_client.py" <<'PY'
 import imaplib, smtplib, ssl, sys, time, uuid, email.message, email.utils, subprocess
 
 host, p25, p587, p465, p993, domain, pw = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), sys.argv[6], sys.argv[7]
-dc_logs = sys.argv[8:]          # command that prints the mail container log
+with_admin = sys.argv[8] == "1"   # admin ran once, so a DKIM key exists
+dc_logs = sys.argv[9:]          # command that prints the mail container log
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
 A, B, C, D, SUP = (f"{n}@{domain}" for n in ("alice", "bob", "carol", "dave", "support"))
 fails = []
@@ -163,6 +165,13 @@ def inbox_has(user, subject, folder="INBOX", wait=25):
             last = e
         time.sleep(1.5)
     return False
+
+def headers_of(user, subject, folder="INBOX"):
+    im = imaplib.IMAP4_SSL(host, p993, ssl_context=ctx); im.login(user, pw); im.select(folder, readonly=True)
+    typ, data = im.search(None, "SUBJECT", f'"{subject}"')
+    if not data[0]: return ""
+    typ, m = im.fetch(data[0].split()[0], "(BODY.PEEK[HEADER])"); im.logout()
+    return m[0][1].decode(errors="replace")
 
 def smtp25():
     s = smtplib.SMTP(host, p25, timeout=30); s.ehlo("client.example.org"); return s
@@ -200,6 +209,9 @@ s.quit()
 # --- delivery
 t = tag(); s = smtp25(); s.sendmail("ext@external.example", [A], msg("ext@external.example", A, t)); s.quit()
 check("25: external -> alice delivered, visible over IMAPS", inbox_has(A, t))
+# (rspamd skips adding headers for private client addresses such as the Docker gateway, so look in its log)
+rlog = subprocess.run(dc_logs[:-1] + ["rspamd"], capture_output=True, text=True).stdout
+check("rspamd scanned the inbound message through the milter", "from: <ext@external.example>" in rlog)
 
 t = tag(); s = smtp25(); s.sendmail("ext@external.example", [SUP], msg("ext@external.example", SUP, t)); s.quit()
 check("alias fan-out: support@ reaches alice", inbox_has(A, t))
@@ -230,6 +242,11 @@ except smtplib.SMTPAuthenticationError:
 
 t = tag(); submit(p587, A, A, B, t)
 check("587: authenticated alice -> bob delivered", inbox_has(B, t))
+hdr = headers_of(B, t)
+if with_admin:
+    check("rspamd signs authenticated mail with DKIM (key made by admin)", "DKIM-Signature:" in hdr and "d=" + domain in hdr, hdr[:300])
+else:
+    print("SKIP  DKIM signing check (no admin container, so no DKIM key)")
 t = tag(); submit(p465, B, B, A, t, ssl_wrap=True)
 check("465: implicit TLS, authenticated bob -> alice delivered", inbox_has(A, t))
 
@@ -265,16 +282,16 @@ t2 = tag(); submit(p587, A, A, "someone@example.net", t2)
 time.sleep(8)
 log = mail_log()
 check("SRS: forwarded mail leaves with an SRS0= envelope sender",
-      any("from=<SRS0=" in l and domain in l for l in log.splitlines()), "no from=<SRS0=...> in postfix log")
+      any("from=<srs0=" in l.lower() and domain in l for l in log.splitlines()), "no from=<srs0=...> in postfix log (Postfix lowercases it)")
 check("SRS: our own users' outbound mail is not SRS-rewritten",
-      "from=<alice@%s>" % domain in log and "from=<SRS0=" in log and
-      not any("from=<SRS0=" in l and "alice" in l for l in log.splitlines()))
+      "from=<alice@%s>" % domain in log and
+      not any("from=<srs0=" in l.lower() and "alice" in l for l in log.splitlines()))
 
 print()
 print("RESULT: %d failed" % len(fails) if fails else "RESULT: all protocol checks passed")
 sys.exit(1 if fails else 0)
 PY
-python3 -I "$WORK/smoke_client.py" 127.0.0.1 "$P_SMTP" "$P_SUB" "$P_SMTPS" "$P_IMAPS" "$DOMAIN" "$PASSWORD" \
+python3 -I "$WORK/smoke_client.py" 127.0.0.1 "$P_SMTP" "$P_SUB" "$P_SMTPS" "$P_IMAPS" "$DOMAIN" "$PASSWORD" "$WITH_ADMIN" \
   docker compose -p "$PROJECT" --env-file "$WORK/env" -f deploy/docker-compose.yml -f "$WORK/override.yml" logs --no-log-prefix mail ||
   FAILED=1
 

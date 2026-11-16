@@ -146,7 +146,7 @@ sudo crontab -e
 Restore onto a fresh server (same repo settings in your shell or `.env`):
 
 ```sh
-cd /opt/rokmail/deploy && docker compose down
+cd /opt/rokmail/deploy && docker compose down && mkdir -p restore
 P=rokmail   # compose project name
 docker run --rm -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
   -v ${P}_db:/data/db -v ${P}_maildata:/data/maildata -v ${P}_dkim:/data/dkim -v ${P}_mail_state:/data/mail_state \

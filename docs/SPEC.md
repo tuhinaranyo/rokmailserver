@@ -21,7 +21,7 @@ docs/       SPEC.md (this), SETUP.md (DNS, install, migration, operations)
 
 | Service | Image | Role |
 |---|---|---|
-| `mail` | own, `debian:bookworm-slim` (Postfix 3.7, **Dovecot 2.3** syntax — do not use trixie/2.4) | SMTP 25/465/587, IMAPS 993, LMTP, SASL, sieve, postsrsd |
+| `mail` | own, `ubuntu:24.04` (Postfix 3.8, **Dovecot 2.3** syntax — do not move to a base with Dovecot 2.4) | SMTP 25/465/587, IMAPS 993, LMTP, SASL, sieve, postsrsd |
 | `rspamd` | `rspamd/rspamd` pinned tag | spam filter via milter, DKIM signing, outbound ratelimit |
 | `redis` | `valkey/valkey:8-alpine` (or redis alpine), maxmemory 64mb | rspamd state |
 | `admin` | own, multi-stage Go → distroless/static or scratch | admin panel on :8080 |

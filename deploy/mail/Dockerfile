@@ -1,6 +1,6 @@
-# Postfix 3.7 + Dovecot 2.3 (do not move to trixie: Dovecot 2.4 has a different config syntax).
-# BASE is overridable only for sandboxes that cannot reach the Debian mirrors.
-ARG BASE=debian:bookworm-slim
+# Postfix 3.8 + Dovecot 2.3. Stay on a base that ships Dovecot 2.3: 2.4 has a different config syntax.
+# ubuntu:24.04 is the base the smoke test was run on; debian:bookworm-slim should also work (untested).
+ARG BASE=ubuntu:24.04
 FROM ${BASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
