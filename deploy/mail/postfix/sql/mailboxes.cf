@@ -1,0 +1,2 @@
+dbpath = /db/mail.db
+query = SELECT 1 FROM accounts WHERE email='%s' AND active=1

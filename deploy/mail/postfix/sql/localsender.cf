@@ -1,0 +1,4 @@
+# Senders in our own domains map to themselves, so SRS (postsrsd) only touches
+# forwarded mail from foreign domains.
+dbpath = /db/mail.db
+query = SELECT '%s' FROM domains WHERE name='%d'

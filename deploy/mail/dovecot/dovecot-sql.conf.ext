@@ -1,0 +1,7 @@
+driver = sqlite
+connect = /db/mail.db
+default_pass_scheme = BLF-CRYPT
+
+password_query = SELECT email AS user, password FROM accounts WHERE email='%u' AND active=1
+user_query = SELECT '/var/mail/%d/%n' AS home, 5000 AS uid, 5000 AS gid, '*:storage=' || quota_mb || 'M' AS quota_rule FROM accounts WHERE email='%u' AND active=1
+iterate_query = SELECT email AS username FROM accounts WHERE active=1

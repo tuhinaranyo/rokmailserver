@@ -1,0 +1,2 @@
+dbpath = /db/mail.db
+query = SELECT destination FROM v_forward WHERE address='%s'

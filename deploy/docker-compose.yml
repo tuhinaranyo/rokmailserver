@@ -1,0 +1,142 @@
+# rokmail: Postfix + Dovecot + Rspamd around one SQLite file owned by the admin app.
+# Run from this directory (needs .env, see .env.example):  docker compose up -d --build
+name: rokmail
+
+x-common: &common
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  mail:
+    <<: *common
+    build: ./mail
+    image: rokmail-mail:1
+    hostname: ${MAIL_HOST:?set MAIL_HOST in .env}
+    mem_limit: 256m
+    stop_grace_period: 30s
+    environment:
+      MAIL_HOST: ${MAIL_HOST}
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN:?set PRIMARY_DOMAIN in .env}
+      RELAYHOST: ${RELAYHOST:-}
+      RELAY_USER: ${RELAY_USER:-}
+      RELAY_PASS: ${RELAY_PASS:-}
+      MESSAGE_SIZE_MB: ${MESSAGE_SIZE_MB:-25}
+      SRS_SECRET: ${SRS_SECRET:-}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - db:/db                      # rw on purpose: SQLite WAL readers must create the -shm file
+      - maildata:/var/mail
+      - postfix_spool:/var/spool/postfix
+      - mail_state:/var/lib/rokmail # generated SRS secret
+      - caddy_data:/caddy:ro        # Caddy's certificate for MAIL_HOST
+    networks:
+      default:
+        aliases:
+          - ${MAIL_HOST}            # webmail reaches IMAP/SMTP under the name on the cert
+
+  rspamd:
+    <<: *common
+    image: rspamd/rspamd:3.12.1
+    mem_limit: 256m
+    depends_on:
+      redis: { condition: service_healthy }
+    volumes:
+      - ./rspamd/local.d:/etc/rspamd/local.d:ro
+      - dkim:/dkim:ro
+      - rspamd_data:/var/lib/rspamd
+    healthcheck:
+      test: ["CMD", "rspamc", "stat"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+
+  redis:
+    <<: *common
+    image: valkey/valkey:8.1.4-alpine
+    command: ["valkey-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru", "--save", "300", "1"]
+    mem_limit: 128m
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 15s
+      timeout: 3s
+
+  admin:
+    <<: *common
+    build: ../admin
+    image: rokmail-admin:1
+    mem_limit: 128m
+    environment:
+      DB_PATH: /db/mail.db
+      DKIM_DIR: /dkim
+      LISTEN: ":8080"
+      MAIL_HOST: ${MAIL_HOST}
+      PRIMARY_DOMAIN: ${PRIMARY_DOMAIN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SESSION_HOURS: ${SESSION_HOURS:-12}
+      ALLOW_USER_FORWARD: ${ALLOW_USER_FORWARD:-false}
+      DEFAULT_QUOTA_MB: ${DEFAULT_QUOTA_MB:-1024}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - db:/db
+      - dkim:/dkim
+    # No healthcheck: the image has no shell or curl. Caddy answers 502 if it is down.
+
+  caddy:
+    <<: *common
+    image: caddy:2.10.2-alpine
+    mem_limit: 128m
+    # TLS_MODE=internal -> Caddy's own CA, for tests without public DNS.
+    entrypoint: ["sh", "-c", "if [ \"$$TLS_MODE\" = internal ]; then export CADDY_TLS='tls internal'; fi; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
+    environment:
+      MAIL_HOST: ${MAIL_HOST}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      TLS_MODE: ${TLS_MODE:-acme}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+
+  # Optional: docker compose --profile webmail up -d   -> https://MAIL_HOST/webmail/
+  webmail:
+    <<: *common
+    profiles: ["webmail"]
+    image: roundcube/roundcubemail:1.6.11-apache
+    mem_limit: 192m
+    environment:
+      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://${MAIL_HOST}
+      ROUNDCUBEMAIL_DEFAULT_PORT: "993"
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://${MAIL_HOST}
+      ROUNDCUBEMAIL_SMTP_PORT: "587"
+      ROUNDCUBEMAIL_DB_TYPE: sqlite
+    volumes:
+      - webmail_data:/var/roundcube/db
+
+volumes:
+  db:
+  dkim:
+  maildata:
+  caddy_data:
+  caddy_config:
+  rspamd_data:
+  redis_data:
+  postfix_spool:
+  mail_state:
+  webmail_data:

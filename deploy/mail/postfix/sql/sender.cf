@@ -1,0 +1,2 @@
+dbpath = /db/mail.db
+query = SELECT login FROM v_sender WHERE address='%s'

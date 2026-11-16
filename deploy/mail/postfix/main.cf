@@ -1,0 +1,57 @@
+# Only settings that differ from Postfix defaults. myhostname, myorigin,
+# message_size_limit and the relay settings are added by entrypoint.sh from the env.
+compatibility_level = 3.7
+maillog_file = /dev/stdout
+inet_protocols = ipv4
+mynetworks = 127.0.0.0/8
+mydestination =
+# Everything is virtual; there are no local unix users or aliases.
+alias_maps =
+alias_database =
+local_recipient_maps =
+disable_vrfy_command = yes
+mailbox_size_limit = 0
+
+# --- virtual domains / mailboxes (read-only SQLite via proxymap; no chroot) ---
+virtual_mailbox_domains = proxy:sqlite:/etc/postfix/sql/domains.cf
+virtual_mailbox_maps = proxy:sqlite:/etc/postfix/sql/mailboxes.cf
+virtual_alias_maps = proxy:sqlite:/etc/postfix/sql/forward.cf
+smtpd_sender_login_maps = proxy:sqlite:/etc/postfix/sql/sender.cf
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+# --- TLS (cert files are managed by entrypoint.sh) ---
+smtpd_tls_cert_file = /run/rokmail/tls/fullchain.pem
+smtpd_tls_key_file = /run/rokmail/tls/privkey.pem
+smtpd_tls_security_level = may
+smtpd_tls_auth_only = yes
+smtpd_tls_protocols = >=TLSv1.2
+smtpd_tls_mandatory_protocols = >=TLSv1.2
+smtp_tls_security_level = may
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+
+# --- SMTP on port 25: no AUTH, never an open relay ---
+smtpd_helo_required = yes
+smtpd_helo_restrictions = reject_invalid_helo_hostname, reject_non_fqdn_helo_hostname
+smtpd_sender_restrictions = reject_non_fqdn_sender
+smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+smtpd_recipient_restrictions = reject_non_fqdn_recipient
+smtpd_data_restrictions = reject_unauth_pipelining
+
+# --- rspamd ---
+smtpd_milters = inet:rspamd:11332
+non_smtpd_milters = $smtpd_milters
+milter_protocol = 6
+milter_default_action = accept
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+
+# --- SRS for forwarding (postsrsd); our own domains are never rewritten ---
+sender_canonical_maps = proxy:sqlite:/etc/postfix/sql/localsender.cf, tcp:127.0.0.1:10001
+sender_canonical_classes = envelope_sender
+recipient_canonical_maps = tcp:127.0.0.1:10002
+recipient_canonical_classes = envelope_recipient
+
+# --- queue / abuse limits ---
+maximal_queue_lifetime = 3d
+bounce_queue_lifetime = 3d
+smtpd_client_connection_rate_limit = 60
+smtpd_client_message_rate_limit = 300

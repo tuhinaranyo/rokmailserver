@@ -1,0 +1,17 @@
+{
+	email {$ADMIN_EMAIL}
+}
+
+# CADDY_TLS is "tls internal" when TLS_MODE=internal (see docker-compose.yml), empty otherwise.
+{$MAIL_HOST} {
+	{$CADDY_TLS}
+	encode zstd gzip
+
+	redir /webmail /webmail/
+	handle_path /webmail/* {
+		reverse_proxy webmail:80
+	}
+	handle {
+		reverse_proxy admin:8080
+	}
+}
